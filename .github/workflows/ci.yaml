@@ -1,0 +1,30 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ubuntu:resolute
+    steps:
+      - name: Install Lyrical rcl and the build tools
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            ca-certificates curl git
+          curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+            -o /usr/share/keyrings/ros-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu resolute main" \
+            > /etc/apt/sources.list.d/ros2.list
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            build-essential cmake ros-lyrical-rcl ros-lyrical-ament-cmake ros-lyrical-ament-cmake-gtest
+      - uses: actions/checkout@v4
+        with:
+          path: src/downstream_bin_a
+      - name: Build and test against the Lyrical debs
+        shell: bash
+        run: |
+          set -eo pipefail
+          . /opt/ros/lyrical/setup.sh
+          cmake -S src/downstream_bin_a -B build -DBUILD_TESTING=ON
+          cmake --build build --parallel
+          ctest --test-dir build --output-on-failure --no-tests=error
