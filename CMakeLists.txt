@@ -1,31 +1,31 @@
 cmake_minimum_required(VERSION 3.22)
-project(downstream_bin_a VERSION 0.1.0 LANGUAGES C CXX)
+project(downstream_bin_a VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(ament_cmake REQUIRED)
-find_package(rcl REQUIRED)
+include(GNUInstallDirs)
+
+find_package(upstream_c 0.1 REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(YAML REQUIRED IMPORTED_TARGET yaml-0.1)
 
 add_library(downstream_bin_a SHARED src/downstream_bin_a.cpp)
 target_include_directories(downstream_bin_a PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
-target_link_libraries(downstream_bin_a PUBLIC rcl::rcl)
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_link_libraries(downstream_bin_a PRIVATE upstream_c::upstream_c PkgConfig::YAML)
 
-install(TARGETS downstream_bin_a EXPORT export_downstream_bin_a
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-  RUNTIME DESTINATION bin)
-install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
+install(TARGETS downstream_bin_a
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-ament_export_targets(export_downstream_bin_a HAS_LIBRARY_TARGET)
-ament_export_dependencies(rcl)
-
+include(CTest)
 if(BUILD_TESTING)
-  find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_downstream_bin_a test/test_downstream_bin_a.cpp)
-  target_link_libraries(test_downstream_bin_a downstream_bin_a)
+  find_package(GTest REQUIRED)
+  add_executable(test_downstream_bin_a test/test_downstream_bin_a.cpp)
+  target_link_libraries(test_downstream_bin_a PRIVATE downstream_bin_a GTest::gtest_main)
+  add_test(NAME test_downstream_bin_a COMMAND test_downstream_bin_a)
 endif()
-
-ament_package()
